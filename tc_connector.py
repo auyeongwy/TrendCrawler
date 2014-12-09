@@ -60,6 +60,11 @@ class TCConnector:
 		
 		
 		
+	def get_current_url(self):
+		return self.v_conn_target.v_domain+self.v_conn_target.v_directory
+		
+		
+		
 	def request(self):
 		""" Makes the HTTP request and returns the response.
 		
@@ -67,7 +72,7 @@ class TCConnector:
 		raises Exception if anything that isn't '200 OK' or HTTP error occured.
 		"""
 		try:
-			print('Connecting: '+self.v_conn_target.v_domain+self.v_conn_target.v_directory)
+			print('Connecting: '+self.get_current_url())
 			self.v_conn.request("GET", self.v_conn_target.v_directory, headers=TCConnector.HEADERS_DIC)
 			res = self.v_conn.getresponse()
 			print('Response: '+str(res.status))

@@ -6,9 +6,9 @@ drop table if exists parse_content;
 -- Create tables
 create table if not exists urls (
    id serial primary key,
-   url character varying(2048) not null
+   url character varying(2048) not null unique
 );
-create index url_index on urls using hash(url);
+create index url_index on urls (url varchar_pattern_ops);
 
 
 
@@ -32,12 +32,25 @@ DECLARE
 BEGIN
    select id from urls where url=p_url into url_id;
    if not found then
-      insert into urls (url) values (p_url);
+      -- Possible race condition if more than one process performs the insert. But the unique constraint on 'url' prevents duplication.
+      insert into urls (url) values (p_url); 
       select id from urls where url=p_url into url_id;
       if not found then
 	     url_id := -1;
 	  end if;
    end if;
    return url_id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+create or replace function insert_content(p_id integer, p_content text)
+returns integer as $$
+DECLARE
+   result integer;
+BEGIN
+   insert into parse_content values (p_id, p_content)
+   
 END;
 $$ LANGUAGE plpgsql;

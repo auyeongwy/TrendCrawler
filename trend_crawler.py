@@ -16,26 +16,36 @@
 # -*- coding: utf-8 -*-
 
 import sys, httplib
-import tc_config, tc_logger, parse_agent, tc_connection_target, tc_connector
+import tc_config, tc_logger, parse_agent, tc_connection_target, tc_connector, tc_database
 
 
 tc_config.read_config() # Parse config file.
 #tc_logger.init_logger() # Initialize logging handlers.
-re_agent = parse_agent.ParseAgent() # Parsing agent.
-
+agent = parse_agent.ParseAgent() # Parsing agent.
 conn_target = tc_connection_target.TCConnectionTarget() # Connection details.
 conn_target.v_domain = tc_config.config_dic['url_target_base']
 conn_target.v_directory = tc_config.config_dic['url_target_directory']
 
-conn = tc_connector.TCConnector(conn_target) # Connector class.
+
+
+db_agent = tc_database.TCDatabase() # Database connection obj.
+try:
+	db_agent.connect()
+except psycopg2.Error as e:
+	print(e.pgerror)
+	sys.exit("Database connection error.")
+conn = tc_connector.TCConnector(conn_target) # HTTP connection obj.
+
 
 
 try:
 	data = conn.request()
-	#tc_logger.log_out(data)
-	if re_agent.init_body(data) is True:
-		while re_agent.get_content() is True:
-			print(re_agent.v_match)
+	res = db_agent.get_url_id(conn.get_current_url())
+	if res != -1:
+		#tc_logger.log_out(data)
+		if agent.init_body(data) is True:
+			while agent.get_content() is True:
+				print(agent.v_match)
 except Exception as e:
 	print(e)
 				
@@ -43,4 +53,4 @@ except Exception as e:
 # Cleanup
 #tc_logger.close_logger()
 conn.close()
-
+db_agent.close()

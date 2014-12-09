@@ -52,13 +52,21 @@ def read_config():
 	config_dic.clear()
 		
 	try:
+		# URL info.
 		keys = ['url_target_base','url_target_port','url_target_directory']
 		for key in keys:
 			config_dic[key] = config.get('URLS', key)
 			
+		# Logging info.
 		keys = ['out_file','out_file2']
 		for key in keys:
 			config_dic[key] = config.get('LOG', key)
+			
+		# Database info.
+		keys = ['database', 'user', 'password', 'host']
+		for key in keys:
+			config_dic[key] = config.get('DATABASE', key)
+			
 	except ConfigParser.NoOptionError as e:
 		raise Exception('Config Error: '+e.strerr)
 			
