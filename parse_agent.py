@@ -29,9 +29,9 @@ class ParseAgent:
 	
 	def __init__(self):
 		""" Initializes the object. """
-		self.v_re_body = re.compile(ParseAgent.BODY_PATTERN, re.DOTALL | re.IGNORECASE) # RE that implents BODY_PATTERN.
-		self.v_re_tag = re.compile(ParseAgent.TAG_PATTERN) # RE that implements TAG_PATTERN.
-		self.v_re_content = re.compile(ParseAgent.CONTENT_PATTERN) # RE that implements CONTENT_PATTERN
+		self.v_re_body = re.compile(ParseAgent.BODY_PATTERN, re.DOTALL | re.IGNORECASE | re.UNICODE) # RE that implents BODY_PATTERN.
+		self.v_re_tag = re.compile(ParseAgent.TAG_PATTERN, re.UNICODE) # RE that implements TAG_PATTERN.
+		self.v_re_content = re.compile(ParseAgent.CONTENT_PATTERN, re.UNICODE) # RE that implements CONTENT_PATTERN
 		self.v_match_obj = None # Current MatchObj returned by the most recent operation. None if no match.
 		self.v_data = '' # Current string data that is being searched.
 		self.v_match = '' # Current match data.
@@ -43,7 +43,6 @@ class ParseAgent:
 		param input Input string to search through.
 		return True if successful. False if failed or the <body>content</body> pattern does not exist in input.
 		"""
-		self.v_data = input
 		self.v_match_obj = self.v_re_body.search(input) # Extract the <body>content</body> part.
 		if self.v_match_obj is not None:
 			self.v_data = self.v_match_obj.group(0)
@@ -74,7 +73,6 @@ class ParseAgent:
 		"""
 		self.v_match_obj = self.v_re_tag.search(self.v_data)
 		if self.v_match_obj is not None:
-			#print('<<'+self.v_match_obj.group(1).lower()+'>>')
 			self.v_match = self.v_match_obj.group(2) # The match.
 			self.v_data = self.v_data[self.v_match_obj.end():] # Prune out the matched data.
 			if self.verify_content() is True:
@@ -94,9 +92,12 @@ class ParseAgent:
 		match_obj = self.v_re_content.search(self.v_match)
 		if match_obj is not None:
 			#remove special chars
-			self.v_match = self.v_match.replace('\n',' ') # Linebreak
-			self.v_match = self.v_match.replace('\r','') # Windows return
-			self.v_match = self.v_match.replace('\t',' ') # tab
+			#self.v_match = self.v_match.replace('\u000A',' ') # Linebreak '\n'
+			self.v_match = self.v_match.replace('\n',' ') # Linebreak '\n'
+			#self.v_match = self.v_match.replace('\u000D','') # Windows return '\r'
+			self.v_match = self.v_match.replace('\r','') # Windows return '\r'
+			#self.v_match = self.v_match.replace('\u0009',' ') # tab '\t'
+			self.v_match = self.v_match.replace('\t',' ') # tab '\t'
 			return True
 		else:
 			return False

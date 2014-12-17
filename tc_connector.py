@@ -48,8 +48,12 @@ class TCConnector:
 		param p_connection_target A valid TCConnectionTarget object.
 		"""
 		self.v_conn_target = p_connection_target
-		self.v_conn = httplib.HTTPConnection(self.v_conn_target.v_domain, self.v_conn_target.v_port, self.v_conn_target.v_timeout)
 		self.v_re_domain = re.compile(TCConnector.DOMAIN_PATTERN)
+		self.v_conn = httplib.HTTPConnection(self.v_conn_target.v_domain, self.v_conn_target.v_port, self.v_conn_target.v_timeout)
+		self.v_response = None
+		self.v_response_headers = None
+		self.v_re_charset = re.compile("charset=\s*([^\s\n\r]+)", re.IGNORECASE)
+		self.v_charset = ''
 		
 		
 		
@@ -68,36 +72,39 @@ class TCConnector:
 	def request(self):
 		""" Makes the HTTP request and returns the response.
 		
-		return The body of the HTTP response in a string object.
+		return The body of the HTTP response in a 'unicode' type.
 		raises Exception if anything that isn't '200 OK' or HTTP error occured.
 		"""
 		try:
 			print('Connecting: '+self.get_current_url())
 			self.v_conn.request("GET", self.v_conn_target.v_directory, headers=TCConnector.HEADERS_DIC)
-			res = self.v_conn.getresponse()
-			print('Response: '+str(res.status))
+			self.v_response = self.v_conn.getresponse()
+			stat = self.v_response.status
+			print('Response: '+str(stat))
 			
-			if res.status == 200:
-				return self.process_response(res)
-			elif res.status == 301 or res.status == 303:
-				return self.redirect_request(res)
+			if stat == 200:
+				return self.process_response()
+			elif stat == 301 or stat == 303:
+				return self.redirect_request()
 			else:
-				raise Exception('Unhandled HTTP response: '+str(res.status))
+				raise Exception('Unhandled HTTP response: '+str(stat))
 		
 		except httplib.HTTPException as e:
 			raise Exception(e.strerror)
 		
 		
 	
-	def redirect_request(self, p_http_response):
+	def redirect_request(self):
 		"""
-		Handles re-direct responses by disconnecting current connection and connecting to the re-directed location.
+		Handles re-direct responses by disconnecting current connection and connecting to the re-directed location. 
+		This actually calls self.request() again after configuring the corrent parameters in self.
+		
 		param p_http_response httpresponse object containing the 3xx redirect response.
-		return Retrieved HTTP document.
+		return Value returned by self.request().
 		raise Exception for unexpected errors.
 		"""
 		self.close() # Close current connection.
-		location = p_http_response.getheader('location')
+		location = self.v_response.getheader('location')
 		match_obj = self.v_re_domain.search(location)
 		if match_obj is not None:
 			self.v_conn_target.v_domain = match_obj.group(1)
@@ -105,29 +112,53 @@ class TCConnector:
 			self.v_conn = httplib.HTTPConnection(self.v_conn_target.v_domain, self.v_conn_target.v_port, self.v_conn_target.v_timeout)
 			return self.request()
 		else:
-			raise Exception('Unhandled redirect location: '+p_http_response.getheaders())
+			raise Exception('Unhandled redirect location: '+self.v_response.getheaders())
 		
 		
 		
-	def process_response(self,p_http_response):
-		""" Process the response from a HTTP request.
-		return The body of the HTTP response in a string object.
+	def process_response(self):
+		""" Process the response from the HTTP request.
+		return The body of the HTTP response in 'unicode' type.
 		raises Exception if HTTP error occured.
 		"""
+		self.v_response_headers = self.v_response.getheaders()
+		data = self.get_data()
+		return data
 		
-		# Check response encoding.
+
+	
+	def get_data(self):
+		""" Get data from the HTTP response. In particular, perform uncompression if 'content-encoding:gzip' is set in the HTTP response header.
+		return HTTP body data in 'unicode' type.
+		raises Exception if HTTP error occured.
+		"""
 		gzipped = False
-		res_headers = p_http_response.getheaders() # Returns a list of tuples.
-		for header_pair in res_headers: # Find the 'content-type' header.
+		for header_pair in self.v_response_headers: # Find the 'content-encoding' header.
 			if(header_pair[0].lower() == 'content-encoding'):
 				if header_pair[1].startswith('gzip'):
 					gzipped = True
-				break
-				
-		data = p_http_response.read()
-		if gzipped is True: # A compressed body is returned. Need to uncompress it.
+					
+			elif(header_pair[0].lower() == 'content-type'): # Find "content-type" header to determine charset.
+				match_obj = self.v_re_charset.search(header_pair[1])
+				if match_obj is not None:
+					#self.v_charset = match_obj.group(1).lower()
+					self.v_charset = match_obj.group(1).lower()
+					print('CHARSET IS '+self.v_charset)
+				else:
+					raise Exception('Received invalid charset')
+
+		# Retrieve the body data.
+		data = self.v_response.read()
+		
+		# Uncompress if body is compressed.
+		if gzipped is True:
 			compressedstream = StringIO.StringIO(data)
 			gzipper = gzip.GzipFile(fileobj=compressedstream)
 			data = gzipper.read()
 
-		return str(data)
+		# Decode the data. Before decode it is 'str' type, becoming 'unicode' type after decode.
+		#print('BEFORE DECODE: '+str(type(data))) 
+		data = data.decode(self.v_charset)
+		#print('AFTER DECODE: '+str(type(data)))
+		
+		return data

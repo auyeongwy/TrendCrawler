@@ -16,7 +16,13 @@
 # -*- coding: utf-8 -*-
 
 import sys, httplib
+from kitchen.text.converters import getwriter
 import tc_config, tc_logger, parse_agent, tc_connection_target, tc_connector, tc_database
+
+
+# Format stdout for unicode output
+UTF8Writer = getwriter('utf8')
+sys.stdout = UTF8Writer(sys.stdout)
 
 
 tc_config.read_config() # Parse config file.
