@@ -24,6 +24,8 @@ class ParseAgent:
 	BODY_PATTERN = '<body[^>]*>.*</body>' # Regex to extract the form <body>*</body>.
 	TAG_PATTERN = '<([A-Za-z]+[^>]*)>([^<]+)' # Regex to extract the form <tag>capture<, to be applied recursively.
 	CONTENT_PATTERN = '[^\s\n\r]' # Find any non white-space, non-newline content.
+	SKIPPED_TAGS = 'script|style' # Tags to skip.
+	CLEAN_WHITESPACE = '\s+' # Pattern to cancel consecutive whitespace.
 	
 	
 	
@@ -31,7 +33,9 @@ class ParseAgent:
 		""" Initializes the object. """
 		self.v_re_body = re.compile(ParseAgent.BODY_PATTERN, re.DOTALL | re.IGNORECASE | re.UNICODE) # RE that implents BODY_PATTERN.
 		self.v_re_tag = re.compile(ParseAgent.TAG_PATTERN, re.UNICODE) # RE that implements TAG_PATTERN.
-		self.v_re_content = re.compile(ParseAgent.CONTENT_PATTERN, re.UNICODE) # RE that implements CONTENT_PATTERN
+		self.v_re_content = re.compile(ParseAgent.CONTENT_PATTERN, re.UNICODE) # RE that implements CONTENT_PATTERN.
+		self.v_re_skipped_tags = re.compile(ParseAgent.SKIPPED_TAGS, re.UNICODE) # RE that implements SKIPPED_TAGS.
+		self.v_re_clean_whitespace = re.compile(ParseAgent.CLEAN_WHITESPACE, re.UNICODE) # RE that implements CLEAN_WHITESPACE.
 		self.v_match_obj = None # Current MatchObj returned by the most recent operation. None if no match.
 		self.v_data = '' # Current string data that is being searched.
 		self.v_match = '' # Current match data.
@@ -59,7 +63,8 @@ class ParseAgent:
 		while True:
 			res = self.get_tag_content()
 			if res == 1:
-				if self.v_match_obj.group(1).lower().startswith('script') is False: # Ignore script tag.
+				match_obj = self.v_re_skipped_tags.search(self.v_match_obj.group(1).lower())
+				if match_obj is None:
 					return True
 			elif res == -1:
 				return False
@@ -75,7 +80,7 @@ class ParseAgent:
 		if self.v_match_obj is not None:
 			self.v_match = self.v_match_obj.group(2) # The match.
 			self.v_data = self.v_data[self.v_match_obj.end():] # Prune out the matched data.
-			if self.verify_content() is True:
+			if self.clean_whitespace() is True:
 				return 1
 			else:
 				return 0
@@ -83,9 +88,9 @@ class ParseAgent:
 		
 		
 		
-	def verify_content(self):
+	def clean_whitespace(self):
 		"""
-		After extracting content from <tag>content<tag> into self.v_match, verify content is not just useless whitespace. Also prune any newlines in content.
+		After extracting content from <tag>content<tag> into self.v_match, clean up redundant spaces such as newlines, tags, consecutive whitespace, etc.
 		This function will operate on self.v_match.
 		return True if content is OK, else False.
 		"""
@@ -98,6 +103,7 @@ class ParseAgent:
 			self.v_match = self.v_match.replace('\r','') # Windows return '\r'
 			#self.v_match = self.v_match.replace('\u0009',' ') # tab '\t'
 			self.v_match = self.v_match.replace('\t',' ') # tab '\t'
+			self.v_match = self.v_re_clean_whitespace.sub(' ', self.v_match)
 			return True
 		else:
 			return False
