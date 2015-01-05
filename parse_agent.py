@@ -21,22 +21,25 @@ import re
 
 class ParseAgent:
 	""" Class to extract HTML string. To see usage, refer to the testing code included below. """
-	BODY_PATTERN = '<body[^>]*>.*</body>' # Regex to extract the form <body>*</body>.
-	TAG_PATTERN = '<([A-Za-z]+[^>]*)>([^<]+)' # Regex to extract the form <tag>capture<, to be applied recursively.
-	CONTENT_PATTERN = '[^\s\n\r]' # Find any non white-space, non-newline content.
+	BODY_RE = '<body[^>]*>.*</body>' # Regex to extract the form <body>*</body>.
+	TAG_RE = '</?([A-Za-z]+)[^>]*>([^<]+)' # Regex to extract the form <tag>capture<, to be applied recursively.
+	CONTENT_RE = '[^\s\n\r]' # Find any non white-space, non-newline content.
 	SKIPPED_TAGS = 'script|style' # Tags to skip.
 	CLEAN_WHITESPACE = '\s+' # Pattern to cancel consecutive whitespace.
+	CLEAN_SPECIAL_CHARS_RE = '\n|\t' # Pattern to locate all '\n' and '\t'
+	CLEAN_WHITESPACE_RE = '\s+' # Pattern to cancel consecutive whitespace.
 	
 	
 	
 	def __init__(self):
 		""" Initializes the object. """
-		self.v_re_body = re.compile(ParseAgent.BODY_PATTERN, re.DOTALL | re.IGNORECASE | re.UNICODE) # RE that implents BODY_PATTERN.
-		self.v_re_tag = re.compile(ParseAgent.TAG_PATTERN, re.UNICODE) # RE that implements TAG_PATTERN.
-		self.v_re_content = re.compile(ParseAgent.CONTENT_PATTERN, re.UNICODE) # RE that implements CONTENT_PATTERN.
-		self.v_re_skipped_tags = re.compile(ParseAgent.SKIPPED_TAGS, re.UNICODE) # RE that implements SKIPPED_TAGS.
-		self.v_re_clean_whitespace = re.compile(ParseAgent.CLEAN_WHITESPACE, re.UNICODE) # RE that implements CLEAN_WHITESPACE.
-		self.v_match_obj = None # Current MatchObj returned by the most recent operation. None if no match.
+		self.v_re_body = re.compile(ParseAgent.BODY_RE, re.DOTALL | re.IGNORECASE | re.UNICODE)
+		self.v_re_tag = re.compile(ParseAgent.TAG_RE, re.UNICODE)
+		self.v_re_content = re.compile(ParseAgent.CONTENT_RE, re.UNICODE)
+		self.v_re_skipped_tags = re.compile(ParseAgent.SKIPPED_TAGS, re.UNICODE)
+		self.v_re_clean_whitespace = re.compile(ParseAgent.CLEAN_WHITESPACE, re.UNICODE)
+		self.v_re_clean_special_chars = re.compile(ParseAgent.CLEAN_SPECIAL_CHARS_RE, re.UNICODE)
+		self.v_re_clean_whitespace = re.compile(ParseAgent.CLEAN_WHITESPACE_RE, re.UNICODE)		
 		self.v_data = '' # Current string data that is being searched.
 		self.v_match = '' # Current match data.
 	
@@ -47,9 +50,11 @@ class ParseAgent:
 		param input Input string to search through.
 		return True if successful. False if failed or the <body>content</body> pattern does not exist in input.
 		"""
-		self.v_match_obj = self.v_re_body.search(input) # Extract the <body>content</body> part.
-		if self.v_match_obj is not None:
-			self.v_data = self.v_match_obj.group(0)
+		self.v_match = '' # Make sure to clear out any matches.
+		match_obj = self.v_re_body.search(input) # Extract the <body>content</body> part.
+		if match_obj is not None:
+			self.v_data = match_obj.group(0)
+			self.clean_whitespace()
 			return True
 		else:
 			return False
@@ -57,69 +62,68 @@ class ParseAgent:
 	
 	
 	def get_content(self):
-		""" Retrieves the content from the form <anytag>content</anytag> in v_data - which is initialized if init_body() returns True. The content is written to v_match. At the same time the match is truncated from v_data. So calling get_content() recursively keeps returning content until there is none to retrieve.
-		return True if successful and the content is written to v_match. False if nothing to match.
+		""" 
+		Parses v_data and extracts all HTML text content into v_match.
 		"""
+		self.clean_whitespace() # Clean up unnecessary whitespace and special characters.
 		while True:
-			res = self.get_tag_content()
-			if res == 1:
-				match_obj = self.v_re_skipped_tags.search(self.v_match_obj.group(1).lower())
-				if match_obj is None:
-					return True
-			elif res == -1:
-				return False
-				
-		
-		
-	def get_tag_content(self):
-		"""
-		Extract content from the form <tag>content<can be other tag>.
-		self.v_data is where the whole HTML resides. MatchObject is written to self.v_match_obj. Matched content is written into self.v_match.
-		"""
-		self.v_match_obj = self.v_re_tag.search(self.v_data)
-		if self.v_match_obj is not None:
-			self.v_match = self.v_match_obj.group(2) # The match.
-			self.v_data = self.v_data[self.v_match_obj.end():] # Prune out the matched data.
-			if self.clean_whitespace() is True:
-				return 1
+			match_obj = self.v_re_tag.search(self.v_data)
+			if match_obj is not None:
+				index = self.verify_tag(match_obj.group(1))
+				if index == 0:
+					self.v_match += match_obj.group(2)+' '
+					self.v_data = self.v_data[match_obj.end()-1:]
+				else:
+					self.v_data = self.v_data[index:]
 			else:
-				return 0
-		return -1
+				break
+				
+		self.v_match = self.v_re_clean_whitespace.sub(' ', self.v_match) # Remove redundant consecutive whitespace in final v_match.
+		
+		
+		
+	def verify_tag(self, p_tag):
+		"""
+		Verify if the tag obtained is approved. 
+		param p_tag The tag obtained.
+		return 0 if the tag is approved. If the tag is not approved returns the index that the index in v_data where the search point should be moved to skip everything in the non-approved tag.
+		"""
+		match_obj = self.v_re_skipped_tags.search(p_tag)
+		if match_obj is None:
+			return 0
+		else:
+			end_tag_re = re.compile('</'+p_tag+'[^>]*>', re.UNICODE | re.IGNORECASE)
+			match_obj = end_tag_re.search(self.v_data)
+			if match_obj is not None:
+				return match_obj.end()
+			else:
+				return len(v_data)-1
 		
 		
 		
 	def clean_whitespace(self):
 		"""
-		After extracting content from <tag>content<tag> into self.v_match, clean up redundant spaces such as newlines, tags, consecutive whitespace, etc.
-		This function will operate on self.v_match.
-		return True if content is OK, else False.
+		After extracting content into self.v_data, clean up redundant spaces such as newlines, tags, consecutive whitespace, etc.
 		"""
-		match_obj = self.v_re_content.search(self.v_match)
-		if match_obj is not None:
-			#remove special chars
-			#self.v_match = self.v_match.replace('\u000A',' ') # Linebreak '\n'
-			self.v_match = self.v_match.replace('\n',' ') # Linebreak '\n'
-			#self.v_match = self.v_match.replace('\u000D','') # Windows return '\r'
-			self.v_match = self.v_match.replace('\r','') # Windows return '\r'
-			#self.v_match = self.v_match.replace('\u0009',' ') # tab '\t'
-			self.v_match = self.v_match.replace('\t',' ') # tab '\t'
-			self.v_match = self.v_re_clean_whitespace.sub(' ', self.v_match)
-			return True
-		else:
-			return False
+		self.v_data = self.v_data.replace('\r','') # Windows return '\r'
+		self.v_data = self.v_re_clean_special_chars.sub(' ', self.v_data) # Change all '\t' and '\n' to whitespace.
+		self.v_data = self.v_re_clean_whitespace.sub(' ', self.v_data) # Remove redundant consecutive whitespace.
+		
 			
 			
 			
 # Testing code
 if __name__ == "__main__":
 	re_agent = ParseAgent()
-	input = '<html><body><data>text</data>\n<data>text2\n\r</data></body></html>'
-	print(input)
+	#input = '<html><body><data>text</data>\n<data>text2\n\r</data></body></html>'
+	input = '<html><body><h2>Welcome to NeoGAF</h2><p>NeoGAF is a nexus of hardcore gamers, enthusiast press, and video game industry developers and publishers. This is a neutral ground where facts and evidence, presented within the confines of civil, inclusive discourse, prevail through careful moderation. Enjoy reading existing discussions as a guest, or <a href="register.php$session[sessionurl_q]">sign up</a> for a free account and be patient through the waiting period.</p></body></html>'
+
 	match = False
 	if re_agent.init_body(input) is True:
-		while re_agent.get_content() is True:
-			print(re_agent.v_match)
-			match = True
-			
+		match = True
+		#re_agent.clean_whitespace()
+		re_agent.get_content()
+		print(re_agent.v_match)
+		
 	if match is False:
 		print('no match')

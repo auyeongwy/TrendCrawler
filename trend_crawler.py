@@ -50,8 +50,8 @@ try:
 	if res != -1:
 		#tc_logger.log_out(data)
 		if agent.init_body(data) is True:
-			while agent.get_content() is True:
-				print(agent.v_match)
+			agent.get_content()
+			print(agent.v_match)
 except Exception as e:
 	print(e)
 				
