@@ -52,6 +52,8 @@ try:
 		if agent.init_body(data) is True:
 			agent.get_content()
 			print(agent.v_match)
+			db_agent.add_content(res, agent.v_match)
+			#print(agent.v_url_list)
 except Exception as e:
 	print(e)
 				

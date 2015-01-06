@@ -25,6 +25,7 @@ class ParseAgent:
 	TAG_RE = '</?([A-Za-z]+)[^>]*>([^<]+)' # Regex to extract the form <tag>capture<, to be applied recursively.
 	CONTENT_RE = '[^\s\n\r]' # Find any non white-space, non-newline content.
 	SKIPPED_TAGS = 'script|style' # Tags to skip.
+	HREF_RE = 'href="([^"]+)"' # Find href reference.
 	CLEAN_WHITESPACE = '\s+' # Pattern to cancel consecutive whitespace.
 	CLEAN_SPECIAL_CHARS_RE = '\n|\t' # Pattern to locate all '\n' and '\t'
 	CLEAN_WHITESPACE_RE = '\s+' # Pattern to cancel consecutive whitespace.
@@ -37,11 +38,13 @@ class ParseAgent:
 		self.v_re_tag = re.compile(ParseAgent.TAG_RE, re.UNICODE)
 		self.v_re_content = re.compile(ParseAgent.CONTENT_RE, re.UNICODE)
 		self.v_re_skipped_tags = re.compile(ParseAgent.SKIPPED_TAGS, re.UNICODE)
+		self.v_re_href = re.compile(ParseAgent.HREF_RE, re.UNICODE)
 		self.v_re_clean_whitespace = re.compile(ParseAgent.CLEAN_WHITESPACE, re.UNICODE)
 		self.v_re_clean_special_chars = re.compile(ParseAgent.CLEAN_SPECIAL_CHARS_RE, re.UNICODE)
 		self.v_re_clean_whitespace = re.compile(ParseAgent.CLEAN_WHITESPACE_RE, re.UNICODE)		
 		self.v_data = '' # Current string data that is being searched.
 		self.v_match = '' # Current match data.
+		self.v_url_list = [] # List of URLs from the document content.
 	
 	
 	
@@ -51,6 +54,7 @@ class ParseAgent:
 		return True if successful. False if failed or the <body>content</body> pattern does not exist in input.
 		"""
 		self.v_match = '' # Make sure to clear out any matches.
+		self.v_url_list = []
 		match_obj = self.v_re_body.search(input) # Extract the <body>content</body> part.
 		if match_obj is not None:
 			self.v_data = match_obj.group(0)
@@ -90,6 +94,8 @@ class ParseAgent:
 		"""
 		match_obj = self.v_re_skipped_tags.search(p_tag)
 		if match_obj is None:
+			if p_tag == u'a': # If the tag is a hyperlink, get the URL.
+				self.get_href()
 			return 0
 		else:
 			end_tag_re = re.compile('</'+p_tag+'[^>]*>', re.UNICODE | re.IGNORECASE)
@@ -101,6 +107,16 @@ class ParseAgent:
 		
 		
 		
+	def get_href(self):
+		"""
+		Extracts the 1st href encountered in v_data and appends it to v_url_list.
+		"""
+		match_obj = self.v_re_href.search(self.v_data)
+		if match_obj is not None:
+			self.v_url_list.append(match_obj.group(1))
+			
+			
+
 	def clean_whitespace(self):
 		"""
 		After extracting content into self.v_data, clean up redundant spaces such as newlines, tags, consecutive whitespace, etc.

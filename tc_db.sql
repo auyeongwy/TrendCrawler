@@ -1,22 +1,24 @@
 -- Drop tables
 drop table if exists urls cascade;
-drop table if exists parse_content;
+drop table if exists content;
 
 
 -- Create tables
 create table if not exists urls (
    id serial primary key,
-   url character varying(2048) not null unique
+   url character varying(2048) not null unique,
+   modified_time timestamp not null
 );
 create index url_index on urls (url varchar_pattern_ops);
 
 
 
-create table if not exists parse_content (
+create table if not exists content (
    id integer references urls(id) on delete cascade on update cascade not null,
-   content text not null
+   content text not null,
+   modified_time timestamp not null
 );
-create index id_index on parse_content using btree(id);
+create index id_index on content using btree(id);
 
 
 
@@ -33,7 +35,7 @@ BEGIN
    select id from urls where url=p_url into url_id;
    if not found then
       -- Possible race condition if more than one process performs the insert. But the unique constraint on 'url' prevents duplication.
-      insert into urls (url) values (p_url); 
+      insert into urls (url, modified_time) values (p_url, now()); 
       select id from urls where url=p_url into url_id;
       if not found then
 	     url_id := -1;
@@ -45,12 +47,13 @@ $$ LANGUAGE plpgsql;
 
 
 
-create or replace function insert_content(p_id integer, p_content text)
-returns integer as $$
+create or replace function add_content(p_id integer, p_content text)
+returns void as $$
 DECLARE
-   result integer;
+   ts timestamp;
 BEGIN
-   insert into parse_content values (p_id, p_content)
-   
+   select now() into ts;
+   insert into content values (p_id, p_content, ts);
+   update urls set modified_time=ts;
 END;
 $$ LANGUAGE plpgsql;

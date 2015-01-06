@@ -77,3 +77,14 @@ class TCDatabase:
 			print(e.pgerror)
 			
 		return result
+	
+	
+	
+	def add_content(self, p_id, p_content):
+		try:
+			cur = self.v_conn.cursor()
+			cur.execute("select * from add_content(%s,%s)",[p_id,p_content])
+			self.v_conn.commit()
+		except psycopg2.Error as e:
+			print(e.pgerror)
+			
