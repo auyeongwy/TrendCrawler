@@ -54,6 +54,19 @@ DECLARE
 BEGIN
    select now() into ts;
    insert into content values (p_id, p_content, ts);
-   update urls set modified_time=ts;
+   update urls set modified_time=ts where id=p_id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+create or replace function update_content(p_id integer, p_content text)
+returns void as $$
+DECLARE
+   ts timestamp;
+BEGIN
+   select now() into ts;
+   update content set content=p_content,modified_time=ts where id=p_id;
+   update urls set modified_time=ts where id=p_id;
 END;
 $$ LANGUAGE plpgsql;
