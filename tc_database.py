@@ -18,6 +18,7 @@
 """ Class to provide database connection. """
 
 import psycopg2
+import psycopg2.extensions
 import tc_config
 
 
@@ -35,6 +36,8 @@ class TCDatabase:
 	agent.close() # Finished. Close connection. Note that the same "agent" can be re-used by just calling "agent.connect()" again.
 	"""
 	def __init__(self):
+		psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
+		psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
 		self.v_conn = None # Database connection.
 		
 
@@ -45,6 +48,7 @@ class TCDatabase:
 		"""
 		dic = tc_config.config_dic
 		self.v_conn = psycopg2.connect(database=dic['database'], user=dic['user'], password=dic['password'], host=dic['host'])
+		self.v_conn.autocommit = True
 		
 
 		
@@ -64,6 +68,7 @@ class TCDatabase:
 		""" Returns an id for a URL. If the URL does not exist, it will be created and a new id returned. Exceptions are logged, not raised.
 		param p_url The URL to get an id.
 		return Id of the URL. -1 if an error occurs.
+		Throws exception for database error.
 		"""
 		result = -1
 		try:
@@ -72,7 +77,6 @@ class TCDatabase:
 			data = cur.fetchone()
 			if data[0] is not None:
 				result = data[0]
-				self.v_conn.commit() # Commit if there was an update.
 		except psycopg2.Error as e:
 			print(e.pgerror)
 			
@@ -81,10 +85,47 @@ class TCDatabase:
 	
 	
 	def add_content(self, p_id, p_content):
+		""" Adds parsed content to the database.
+		param p_id URL id of the URL associated with the content to be added. Retrieved via get_url_id().
+		param p_content Text content to be added.
+		Throws exception for database error.
+		"""
 		try:
 			cur = self.v_conn.cursor()
 			cur.execute("select * from add_content(%s,%s)",[p_id,p_content])
-			self.v_conn.commit()
 		except psycopg2.Error as e:
 			print(e.pgerror)
 			
+			
+			
+	def get_content_ids(self, p_baseurl):
+		""" Retrieves all ids in content table with the specified baseurl. E.g. 'www.world.com' returns results for 'www.world.com*' (wildcard).
+		param p_baseurl The base URL to search for, e.g. 'www.world.com'.
+		return Python list of ids.
+		"""
+		try:
+			p_baseurl += '%' # Append wildcard character for the 'like' SQL function.
+			cur = self.v_conn.cursor()
+			cur.execute("select * from get_content_ids(%s)", [p_baseurl])
+			return cur.fetchall()
+		except psycopg2.Error as e:
+			print(e.pgerror)
+		
+		
+		
+	def get_content_by_id(self, p_id):
+		""" Retrieves parsed content of the specified entry in the content table.
+		param p_id Id of the content table entry to retrieve.
+		return Text content.
+		"""
+		try:
+			cur = self.v_conn.cursor()
+			cur.execute("select * from get_content_by_id(%s)", p_id)
+			result = cur.fetchone()
+			return result
+			#if result[0] is not None:
+			#	return result[0]
+			#else:
+			#	return 
+		except psycopg2.Error as e:
+			print(e.pgerror)

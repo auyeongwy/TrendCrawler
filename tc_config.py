@@ -67,8 +67,13 @@ def read_config():
 		for key in keys:
 			config_dic[key] = config.get('DATABASE', key)
 			
+		# Trend rules
+		keys = ['minimum_length']
+		for key in keys:
+			config_dic[key] = config.get('TREND_RULES', key)		
+			
 	except ConfigParser.NoOptionError as e:
-		raise Exception('Config Error: '+e.strerr)
+		raise Exception('Config Error: '+str(e))
 			
 	semaphore.release()	
 
