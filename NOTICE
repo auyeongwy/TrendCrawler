@@ -1,0 +1,35 @@
+Copyright 2015 Au Yeong Wing Yau
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+The source files covered under this license includes:
+
+parse_agent.py      
+tc_config.py             
+tc_connector.py  
+tc_logger.py  
+trend_crawler.py
+tc_analysis_mgr.py  
+tc_connection_target.py  
+tc_database.py   
+test.py       
+trend_extractor.py
+
+In directory TrendExtractor-C++/
+ConfigReader.cpp  
+DBMrg.cpp  
+TEException.cpp  
+TrendExtractor.cpp
+ConfigReader.hpp  
+DBMgr.hpp  
+TEException.hpp
+Makefile
