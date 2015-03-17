@@ -17,7 +17,7 @@
 
 import sys
 from kitchen.text.converters import getwriter
-import tc_config, tc_database
+import tc_config, tc_database, tc_analysis_mgr
 
 
 # Format stdout for unicode output
@@ -34,16 +34,25 @@ except psycopg2.Error as e:
 	sys.exit("Database connection error.")
 
 
+analysis_mgr = tc_analysis_mgr.TCAnalysisMgr()
+
 
 try:
 	content_ids = db_agent.get_content_ids('www.neogaf.com')
 	for id in content_ids:
 		content = db_agent.get_content_by_id(id)
 		if content is not None:
-			print(content[0])
+			analysis_mgr.add_content(content[0])
+			#print(analysis_mgr.v_content)
 except Exception as e:
 	print(e)
-				
+
+
+# Start analysis.
+analysis_mgr.analyze()
+print(analysis_mgr.v_result)
+
+
 				
 # Cleanup
 db_agent.close()
