@@ -19,6 +19,7 @@ See the License for the specific language governing permissions and limitations 
 
 #include <string>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/thread.hpp>
 
 
 using namespace std;
@@ -61,9 +62,11 @@ public:
 	 @throws exception if any keys for constructing the string does not exist.
 	 */
 	string get_connect_db_string();
-		
+	
 private:
-	boost::property_tree::ptree v_tree; /**< Boost property_tree containing content of the config file. */
+	static boost::property_tree::ptree v_tree; /**< Boost property_tree containing content of the config file. */
+	static boost::mutex v_mtx; /**< Boost thread mutex to control simultaneous reads. */
+	
 	
 	/**
 	 Run a check on the config file to ensure all important parameters are present. This is called by the public init() function. This ensures that important  parameters that are missing are immeditately detected at the start of the application. Modify this function to ensure new key values are checked during init().

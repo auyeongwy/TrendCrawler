@@ -32,6 +32,10 @@ using namespace std;
 
 static void do_abort();
 
+/* Initialise static variables. */
+boost::property_tree::ptree ConfigReader::v_tree;
+boost::mutex ConfigReader::v_mtx; 
+
 
 /**
  * The main() function.
@@ -43,8 +47,8 @@ int main()
 	try {
 		configReader.init();
 		cout << configReader.get_connect_db_string() << endl;
-	} catch (exception &e) {
-		cout << e.what() << endl;
+	} catch (exception *e) {
+		cout << e->what() << endl;
 		do_abort();
 	}
 

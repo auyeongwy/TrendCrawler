@@ -20,10 +20,12 @@ See the License for the specific language governing permissions and limitations 
 #include "TEException.hpp"
 
 
-
 void ConfigReader::init()
 {
-	boost::property_tree::ini_parser::read_ini("TrendExtractor.config", v_tree);	
+	v_mtx.lock();
+	boost::property_tree::ini_parser::read_ini("TrendExtractor.config", v_tree);
+	check_keys();
+	v_mtx.unlock();
 }
 
 
@@ -38,17 +40,22 @@ void ConfigReader::check_keys()
 {
 	list<string> keys;
 	list<string>::iterator iter;
+	string tmp;
 	
+	/* List mandatory list of keys to check here. */
 	keys.push_back("DATABASE.database");
 	keys.push_back("DATABASE.user");
 	keys.push_back("DATABASE.password");
 	keys.push_back("DATABASE.host");
+	//keys.push_back("DUMMY");
 	
-	for(iter=keys.begin(); iter!=keys.end(); iter++) {
-		if(v_tree.find(*iter) == v_tree.not_found()) {
-			string msg = *iter+" not in config.";
-			throw new TEException(msg);
+	/* Check mandatory list of keys. Throw an exception if a value is missing. */
+	try {
+		for(iter=keys.begin(); iter!=keys.end(); iter++) {
+			tmp = get_value(*iter);
 		}
+	} catch(exception &e) {
+		throw new TEException(*iter + " not in config.");
 	}
 }
 

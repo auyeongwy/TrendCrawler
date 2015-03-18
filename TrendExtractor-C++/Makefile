@@ -1,12 +1,12 @@
 CC = g++
 FLAGS = -O2 -march=native -Wall -std=c++0x
-LIBS = 
+LIBS = -lboost_thread
 OBJ_FILES = ConfigReader.o TEException.o
 
 all: TrendExtractor
 
 TrendExtractor: TrendExtractor.cpp $(OBJ_FILES)
-	$(CC) $(FLAGS) -o TrendExtractor $(OBJ_FILES) TrendExtractor.cpp 
+	$(CC) $(FLAGS) -o TrendExtractor $(OBJ_FILES) $(LIBS) TrendExtractor.cpp 
 	
 ConfigReader.o: ConfigReader.cpp ConfigReader.hpp
 	$(CC) $(FLAGS) ConfigReader.cpp -c
