@@ -16,11 +16,31 @@ See the License for the specific language governing permissions and limitations 
 #ifndef DBMGR_HPP
 #define DBMGR_HPP
 
-class DBMGR_HPP
+#include <string>
+#include <libpq-fe.h>
+
+using namespace std;
+
+class DBMgr
 {
 public:
+	/**
+	 Connects to the database. Database parameters are configured in the config file and accessed by ConfigReader.
+	 @throws exception if there is an error.
+	 */
 	void connect();
+	
+	
+	/**
+	 Closes connection to the database.
+	 */
 	void close();
+	
+	
+	bool runSQL(string p_sql);
+	
+private:
+	PGconn *v_conn = NULL;
 };
 
 #endif

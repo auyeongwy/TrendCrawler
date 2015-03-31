@@ -25,6 +25,7 @@ See the License for the specific language governing permissions and limitations 
 #include <iostream>
 #include <stdlib.h>
 #include "ConfigReader.hpp"
+#include "DBMgr.hpp"
 
 
 using namespace std;
@@ -43,10 +44,15 @@ boost::mutex ConfigReader::v_mtx;
 int main()
 {
 	ConfigReader configReader;
+	DBMgr dbMgr;
 	
 	try {
 		configReader.init();
-		cout << configReader.get_connect_db_string() << endl;
+		dbMgr.connect();
+		bool result = dbMgr.runSQL("select * from urls");
+		if(!result)
+			cout << "SQL problem" << endl;
+		dbMgr.close();
 	} catch (exception *e) {
 		cout << e->what() << endl;
 		do_abort();

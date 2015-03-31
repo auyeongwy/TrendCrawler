@@ -1,7 +1,7 @@
 CC = g++
 FLAGS = -O2 -march=native -Wall -std=c++0x
-LIBS = -lboost_thread
-OBJ_FILES = ConfigReader.o TEException.o
+LIBS = -lboost_thread -lpq
+OBJ_FILES = ConfigReader.o TEException.o DBMgr.o
 
 all: TrendExtractor
 
@@ -13,6 +13,9 @@ ConfigReader.o: ConfigReader.cpp ConfigReader.hpp
 
 TEException.o: TEException.cpp TEException.hpp
 	$(CC) $(FLAGS) TEException.cpp -c
+	
+DBMgr.o: DBMgr.cpp DBMgr.hpp
+	$(CC) $(FLAGS) DBMgr.cpp -c
 	
 clean:
 	rm -f *.o
